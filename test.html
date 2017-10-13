@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>The canvas of some Test.</title>
+	<style type="text/css">
+		canvas{
+			border: 1px solid #ddd;
+		}
+		.cp{
+			padding:10px 20px;
+			margin:5px;
+		}
+	</style>
+</head>
+<body>
+	<canvas id="cvs"></canvas>
+
+	<div>
+		<span class="cp" style="background-color:#00c947"></span>
+		<span class="cp" style="background-color:#f0af38"></span>
+		<span class="cp" style="background-color:#377af4"></span>
+		<span class="cp" style="background-color:#a930f4"></span>
+		<span class="cp" style="background-color:#e80932"></span>
+		<span class="cp" style="background-color:#5cc3ff"></span>
+		<span class="cp" style="background-color:#e2d213"></span>
+	</div>
+
+	<script type="text/javascript">
+		var PI = Math.PI,
+			rt = 20, 		//动画每一帧的间隔时间（毫秒）
+			at = 1400, 		//动画总时间
+			tn = at / rt;	//动画总帧数
+		var ox = 100, oy = 100;  			 //图饼中心点
+		var or = 80, orr = or + 10;			 //图饼半径 和 加大半径
+		var cvs = document.querySelector('#cvs');
+		cvs.width = 400;
+		cvs.height= 400;
+		var ctx = cvs.getContext('2d');
+
+		var colors = ['#00c947','#f0af38','#377af4','#a930f4','#e80932','#5cc3ff','#e2d213'];
+
+		var data = [
+			{v:20,t:'a1'},
+			{v:15,t:'a2'},
+			{v:5,t:'a3'},
+			{v:18,t:'a4'}
+		]
+
+		init(data);
+
+		var cmRodia = (function(){
+			function Rodia(){}
+		})()
+
+		function init(ary){
+			var  c = [], x = [0], sum = 0;
+			for (var i = 0; i < ary.length; i++) {
+				sum += ary[i].v;
+			}
+			for (var i = 0; i < ary.length; i++) {
+				var v = ary[i].v, r = v/sum, s = -0.5;
+				if(i == 0){
+					x[i] = r*2-0.5;
+				}else{
+					s = x[i-1];
+					x[i] = s+r*2;
+				}
+				c[i] = {start:s*PI, end:x[i]*PI, asx:s*PI, color:colors[i], value:v, text:ary[i].t, rate:Math.round(r*100)+"%", arc:x[i], index:i};
+				
+			}
+			amtarc(cvs, ctx, c, 0, function(o){
+				eventStart(cvs, ctx, c);
+			});
+			ctInfo(ctx,c);
+		}
+
+		function ctInfo(ctx,cObjs,pObj){
+			for (var i = 0; i < cObjs.length; i++) {
+				ptRectText(ctx,cObjs[i], ox + or + 40, ox-or+(30*i), 40, 20, pObj);
+			}
+		}
+
+		function eventStart(cvs, ctx, cObjs){
+			cvs.addEventListener('mousemove', function(e){
+				render(cvs, ctx, cObjs, calcPosition(e));
+			});
+		}
+
+		function calcPosition(e){
+			return {x:e.offsetX, y:e.offsetY};
+		}
+
+		function render(cvs, ctx, cObjs, pObj){
+			ctx.clearRect(0, 0, cvs.width, cvs.height);
+			ctInfo(ctx,cObjs,pObj);
+			cObjs.forEach(function(item){
+				ptarc(ctx, item, pObj);
+			});
+		}
+
+		function amtarc(cvs,ctx,cObjs,n,callback){
+			ctx.clearRect(0,0, ox+or+20, oy+or+20);
+			cObjs.forEach(function(item){
+				item.asx += (item.end-item.start)/tn;
+				item.asx > item.end && (item.asx = item.end);
+
+				ptarc(ctx, {start:item.start, end:item.asx, color:item.color});
+			})
+			if(n++ < tn) setTimeout(function(){
+				amtarc(cvs,ctx,cObjs,n,callback)
+			},rt) 
+				else 
+			(callback instanceof Function && callback(cObjs));
+		}
+
+		function ptarc(ctx, vObj, ep, r){
+			ctx.save();
+			ctx.beginPath();
+			ctx.fillStyle = vObj.color;
+			ctx.lineTo(ox, oy);
+			ctx.globalCompositeOperation = "xor";
+			ctx.arc(ox, oy, r || or, vObj.start, vObj.end);
+			ctx.closePath();
+			ctx.fill();
+			ctx.restore();
+
+			if(ep && ctx.isPointInPath(ep.x, ep.y)){
+				ptarc(ctx, vObj, null, orr)
+				ptText(ctx, vObj, ep)
+			}
+		}
+
+		function ptText(ctx,vObj,ep){
+			ctx.save();
+			ctx.beginPath();
+			ctx.font = "14px Arial";
+			ctx.fillStyle = vObj.color;
+			ctx.globalCompositeOperation = "xor";
+			ctx.fillText('value:'+vObj.value, ep.x+5, ep.y+5);
+			ctx.fillText('rate:'+vObj.rate, ep.x+5, ep.y+25);
+			ctx.closePath();
+			ctx.restore();
+		}
+
+		function ptRectText(ctx,vObj,x,y,w,h,ep){
+			ctx.save();
+			ctx.beginPath();
+			ctx.fillStyle = vObj.color;
+			ctx.rect(x,y,w,h);
+			ctx.closePath();
+			ctx.fill();
+			ctx.restore();
+
+			if(ep && ctx.isPointInPath(ep.x, ep.y)){
+				ptarc(ctx, vObj, null, orr)
+				// ptText(ctx, vObj, ep)
+			}
+
+			ctx.save();
+			ctx.textAlign="center";
+			ctx.fillStyle = "#666";
+			ctx.font = "16px Arial";
+			ctx.globalCompositeOperation = "xor";
+			ctx.fillText(vObj.value, x+w/2, y + 16);
+			ctx.fillText(vObj.text, x+w+20, y + 16);
+			ctx.restore();		
+		}
+
+	</script>
+</body>
+</html>
